@@ -5,9 +5,14 @@
 # Save proxy settings
 # Set/unset proxy settings when selected
 #
+# ProxySwitcher creates a directory home/ProxySwitcher/
+# ProxySwitcher creates a settings file home/ProxySwitcher/settings.pxs
+# This file contains:
+#		 - current proxy settings
+#		 - saved proxy settings
+#
 # Matthew Parry 2014
 #
-
 # -----------------------
 # Import required Python libraries
 # -----------------------
@@ -16,96 +21,277 @@ import os
 import sys
 from PySide.QtCore import *
 from PySide.QtGui import*
+import configparser
 
 # GUI setup
 class ProxySwitcher(QWidget):
-    def __init__(self):
-        super(ProxySwitcher, self).__init__()
+	def __init__(self):
+		super(ProxySwitcher, self).__init__()
 
-        self.initUI()
+		self.initUI()
 
-    def initUI(self):
+	def initUI(self):
 
-        # Exit Button
-        self.exit_btn = QPushButton('Exit', self)
-        self.exit_btn.setMaximumSize(50,30)
+		# Exit Button
+		self.exit_btn = QPushButton('Exit', self)
+		self.exit_btn.setMaximumSize(50,30)
+		
+		#Section
+		self.section_lbl = QLabel("Section", self)
+		self.section_combo = QComboBox(self)
+		
+		#now load combo box
+		savedproxies = proxies.getAllProxies()
+		for ProxySetting in savedproxies:
+			self.section_combo.addItem(ProxySetting.label)
+#			proxyconfig.set(ProxySetting.label, "server", ProxySetting.server)
+#			proxyconfig.set(ProxySetting.label, "port", ProxySetting.port)
+#			proxyconfig.set(ProxySetting.label, "username", ProxySetting.username)
+#			proxyconfig.set(ProxySetting.label, "password", ProxySetting.password)
+			
+		#call function on selection in combo
+		self.section_combo.activated[str].connect(self.onActivated)  
 
-        self.controlsLayout = QGridLayout()
-        self.controlsLayout.addWidget(self.exit_btn, 3, 3)
-        self.setLayout(self.controlsLayout)
+		#Server
+		self.server_lbl = QLabel("Server", self)
+		self.server_input = QLineEdit("", self)
 
-       
+		#Port
+		self.port_lbl = QLabel("Port", self)
+		self.port_input = QLineEdit("", self)
+
+		#Username
+		self.username_lbl = QLabel("Username", self)
+		self.username_input = QLineEdit("", self)
+
+		#Password
+		self.password_lbl = QLabel("Password", self)
+		self.password_input = QLineEdit("", self)
+
+		self.controlsLayout = QGridLayout()
+		self.controlsLayout.addWidget(self.exit_btn, 3, 3)
+		self.setLayout(self.controlsLayout)
+		
+		#labels
+		self.controlsLayout.addWidget(self.section_lbl, 0, 0)
+		self.controlsLayout.addWidget(self.section_combo, 0, 1)
+		self.controlsLayout.addWidget(self.server_lbl, 1, 0)
+		self.controlsLayout.addWidget(self.server_input, 1, 1)
+		self.controlsLayout.addWidget(self.port_lbl, 2, 0)
+		self.controlsLayout.addWidget(self.port_input, 2, 1)
+		self.controlsLayout.addWidget(self.username_lbl, 3, 0)
+		self.controlsLayout.addWidget(self.username_input, 3, 1)
+		self.controlsLayout.addWidget(self.password_lbl, 4, 0)
+		self.controlsLayout.addWidget(self.password_input, 4, 1)
+		
+	def onActivated(self, text):
+		#triggered on combo selction
+		#get index of selected combo
+		savedproxies = proxies.getAllProxies()
+		for ProxySetting in savedproxies:
+			if ProxySetting.label == self.section_combo.itemText:
+				self.server_input.setText(ProxySetting.server)
+				self.port_input.setText(ProxySetting.port)
+				self.username_input.setText(ProxySetting.username)
+				self.password_input.setText(ProxySetting.password)
+			#self.section_combo.addItem(ProxySetting.label)
+#			proxyconfig.set(ProxySetting.label, "server", ProxySetting.server)
+#			proxyconfig.set(ProxySetting.label, "port", ProxySetting.port)
+#			proxyconfig.set(ProxySetting.label, "username", ProxySetting.username)
+#			proxyconfig.set(ProxySetting.label, "password", ProxySetting.password)		
+
 
 class ProxySwitcherWindow(QMainWindow):
-    def __init__(self):
-        super(ProxySwitcherWindow, self).__init__()
-        self.widget = ProxySwitcher()
-        self.setCentralWidget(self.widget)
+	def __init__(self):
+		super(ProxySwitcherWindow, self).__init__()
+		self.widget = ProxySwitcher()
+		self.setCentralWidget(self.widget)
 
-        #Create Menu Item
-        self.createAction = QAction(QIcon('create.png'), '&Create', self)
-        self.createAction.setShortcut('Ctrl+C')
-        self.createAction.setStatusTip('Create Proxy Settings')
-        #self.createAction.triggered.connect(self.create)
+		#Create Menu Item
+		self.createAction = QAction(QIcon('create.png'), '&Create', self)
+		self.createAction.setShortcut('Ctrl+C')
+		self.createAction.setStatusTip('Create Proxy Settings')
+		#self.createAction.triggered.connect(self.create)
 
-        #Edit Menu Item
-        self.editAction = QAction(QIcon('edit.png'), '&Edit', self)
-        self.editAction.setShortcut('Ctrl+E')
-        self.editAction.setStatusTip('Edit Proxy Settings')
-        self.editAction.triggered.connect(self.openFile)
+		#Edit Menu Item
+		self.editAction = QAction(QIcon('edit.png'), '&Edit', self)
+		self.editAction.setShortcut('Ctrl+E')
+		self.editAction.setStatusTip('Edit Proxy Settings')
+		self.editAction.triggered.connect(self.openFile)
 
-        #Delete Menu Item
-        self.deleteAction = QAction(QIcon('delete.png'), '&Delete', self)
-        self.deleteAction.setShortcut('Ctrl+D')
-        self.deleteAction.setStatusTip('Delete Proxy Settings')
-        #self.deleteAction.triggered.connect(self.delete)
+		#Delete Menu Item
+		self.deleteAction = QAction(QIcon('delete.png'), '&Delete', self)
+		self.deleteAction.setShortcut('Ctrl+D')
+		self.deleteAction.setStatusTip('Delete Proxy Settings')
+		#self.deleteAction.triggered.connect(self.delete)
 
-        self.menu = self.menuBar()
-        self.proxyMenu = self.menu.addMenu('&Proxy')
-        self.proxyMenu.addAction(self.createAction)
-        self.proxyMenu.addAction(self.editAction)
-        self.proxyMenu.addAction(self.deleteAction)
-        self.setGeometry(300, 300, 250, 250)
-        self.setWindowTitle('Proxy Switcher')
-        self.setWindowIcon(QIcon('switch.png'))
+		self.menu = self.menuBar()
+		self.proxyMenu = self.menu.addMenu('&Proxy')
+		self.proxyMenu.addAction(self.createAction)
+		self.proxyMenu.addAction(self.editAction)
+		self.proxyMenu.addAction(self.deleteAction)
+		
+		self.setGeometry(300, 300, 250, 250)
+		self.setWindowTitle('Proxy Switcher')
+		self.setWindowIcon(QIcon('switch.png'))
 
-    # open file
-    def openFile(self):
-        dialog = QFileDialog(self)
-        dialog.setDirectory('/home/')
-        dialog.setNameFilter('*.pxs')
-        dialog.setViewMode(QFileDialog.List)
-        if dialog.exec_():
-            filename = dialog.selectedFiles()
-        #filename = QFileDialog.getOpenFileName(self,'Open Proxy Settings File',
-         #                                  '/home/')
- 
+	# open file
+	def openFile(self):
+		dialog = QFileDialog(self)
+		dialog.setDirectory(settingdirectory)
+		dialog.setNameFilter('*.pxs')
+		dialog.setViewMode(QFileDialog.List)
+		if dialog.exec_():
+			filename = dialog.selectedFiles()
+			
+class ProxySetting():
+	def __init__(self, label, server, port, username, password):
+		self.label = label
+		self.server = server
+		self.port = port
+		self.username = username
+		self.password = password
+		
+	def amend_settings(self, label, server, port, username, password):
+		print("amending settings")
+		self.label = label
+		self.server = server
+		self.port = port
+		self.username = username
+		self.password = password
+	
+	def printproxy(self):
+		print("label = ", self.label)
+		print("server = ", self.server)
+		print("port = ", self.port)
+		print("username = ", self.username)
+		print("password = ", self.password)
+		
+class ProxySettingsArray():
+	def __init__(self, settings):
+		self.settings = []
+		for label, server, port, username, password in settings:
+			self.add_settings(label, server, port, username, password)
+	
+	def add_settings(self,label, server, port, username, password):
+		index = self.exists(label)  #returns index of existing entry
+		if index > -1:
+			#already exists so amend existing values
+			self.settings[index].amend_settings(label, server, port, username, password)
+			return "label exists"
+		else:
+			self.settings.append(ProxySetting(label, server, port, username, password))
+			return "label appended"
+			
+	def delete_settings(self,label):
+		index = self.exists(label)
+		if index > -1:
+			#exists so delete
+			print("Are you sure?")
+			del self.settings[index]
+		else:
+			return "It don't exist"
+			
+	def exists(self, label):
+		for setting in self.settings:
+			if label == setting.label:
+				return self.settings.index
+		return -1
+			
+	def printAllProxies(self):
+		for setting in self.settings:
+			setting.printproxy()
+			
+	def getAllProxies(self):
+		return self.settings
+
+
+
+
+settingdirectory =  'c://home/ProxySwitcher/'
+settingfilename = settingdirectory + 'settings.pxs'
+proxyservername = ""
+proxyserverport = ""
+proxyuser = ""
+proxypassword = ""
+proxies = ProxySettingsArray("")	
 
 def main():
 
-    # create a Qt application
-    app = QApplication(sys.argv)
-    #gui = ProxySwitcher()
-    window = ProxySwitcherWindow()
-    window.show()
+	# check see if any proxy settings stored
+	# first check path exists ...
+	if not os.path.exists(settingdirectory): #checks for whether this path (pointed by dir), exists or not
+		os.makedirs(settingdirectory)           #make it
+		
+	# now see if we have a settings.pxs file - if not auto create it
+	settingsfile = open(settingfilename, 'a')
 
-    # Enter Qt application loop
-    sys.exit(app.exec_())
+	#create empty array to hold settings
+	global proxies# = ProxySettingsArray("")
+	# read file and store sections in array
+	if os.path.getsize(settingfilename) > 0:
+		#file has data in it
+		proxyconfig = configparser.ConfigParser()
+		proxyconfig.read(settingfilename)
+		for section_name in proxyconfig.sections():
+#			print('Section:', section_name)
+			sectionname = section_name
+			servername = proxyconfig.get(section_name,'server')
+			portid = proxyconfig.get(section_name,'port')
+			username = proxyconfig.get(section_name,'username')
+			passwd = proxyconfig.get(section_name,'password')
+			proxies.add_settings(sectionname, servername, portid, username, passwd)
+	else:
+		#else file is zero bytes - hence empty
+		#will be first time run - so create blank entry for no proxy
+		proxies.add_settings("No Proxy", "","","","")
+#		proxies.add_settings("work", "webshield.embc.uk.com","80","test","pass")
+
+#	proxies.printAllProxies()
+	
+	# create a Qt application for gui
+	app = QApplication(sys.argv)
+	window = ProxySwitcherWindow()
+
+	window.show()
+
+	# Enter Qt application loop - process the gui
+	app.exec_()
+	
+	#window has closed
+	#save config file
+	#open file for writing
+	settingsfile = open(settingfilename, 'w')
+	
+	#remove all sections
+	proxyconfig = configparser.ConfigParser()
+	proxyconfig.read(settingfilename)
+	for section_name in proxyconfig.sections():
+		proxyconfig.remove_section(section_name)
+
+	#now add class info
+	savedproxies = proxies.getAllProxies()	#get list of all proxies
+
+	#now save to config file
+	for ProxySetting in savedproxies:
+		proxyconfig.add_section(ProxySetting.label)
+		proxyconfig.set(ProxySetting.label, "server", ProxySetting.server)
+		proxyconfig.set(ProxySetting.label, "port", ProxySetting.port)
+		proxyconfig.set(ProxySetting.label, "username", ProxySetting.username)
+		proxyconfig.set(ProxySetting.label, "password", ProxySetting.password)
+	proxyconfig.write(settingsfile)
+
+	#end program
+	sys.exit()
+	
+
 
 if __name__ == '__main__':
-    main()
-
-# check see if any proxy settings stored
+	main()
 
 
 
-# save file
 
-# open settings file
-
-# close (and save) settings file
-
-# load current proxy settings
 
 
 # get proxy settings from GUI
