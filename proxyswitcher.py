@@ -33,72 +33,147 @@ class ProxySwitcher(QWidget):
 	def initUI(self):
 
 		# Exit Button
-		self.exit_btn = QPushButton('Exit', self)
-		self.exit_btn.setMaximumSize(50,30)
+		self.delete_btn = QPushButton('Delete', self)
+		self.delete_btn.setMaximumSize(50,30)
+		self.delete_btn.setEnabled(True)
+		self.delete_btn.clicked.connect(self.delete_buttonClicked)
+		# Save Button
+		self.save_btn = QPushButton('Save', self)
+		self.save_btn.setMaximumSize(50,30)
+		self.save_btn.setEnabled(False)
+		self.save_btn.clicked.connect(self.save_buttonClicked)
+		# Set Button
+		self.set_btn = QPushButton('Set', self)
+		self.set_btn.setMaximumSize(50,30)
+		self.set_btn.setEnabled(True)
+		self.set_btn.clicked.connect(self.set_buttonClicked)
+		# New Button
+		self.new_btn = QPushButton('New', self)
+		self.new_btn.setMaximumSize(50,30)
+		self.new_btn.setEnabled(True)
+		self.new_btn.clicked.connect(self.new_buttonClicked)
+		# Edit Button
+		self.edit_btn = QPushButton('Edit', self)
+		self.edit_btn.setMaximumSize(50,30)
+		self.edit_btn.setEnabled(True)		
+		self.edit_btn.clicked.connect(self.edit_buttonClicked)
 		
 		#Section
-		self.section_lbl = QLabel("Section", self)
+		self.section_lbl = QLabel("Choose:", self)
 		self.section_combo = QComboBox(self)
 		
 		#now load combo box
 		savedproxies = proxies.getAllProxies()
 		for ProxySetting in savedproxies:
 			self.section_combo.addItem(ProxySetting.label)
-#			proxyconfig.set(ProxySetting.label, "server", ProxySetting.server)
-#			proxyconfig.set(ProxySetting.label, "port", ProxySetting.port)
-#			proxyconfig.set(ProxySetting.label, "username", ProxySetting.username)
-#			proxyconfig.set(ProxySetting.label, "password", ProxySetting.password)
 			
 		#call function on selection in combo
-		self.section_combo.activated[str].connect(self.onActivated)  
+		self.section_combo.activated[str].connect(self.comboActivated)  
+
+		self.info_lbl = QLabel("Select Proxy Setting and click Set to use those settings", self)
+		self.info2_lbl = QLabel("or Edit to change or Delete to remove or New to create new settings", self)
 
 		#Server
 		self.server_lbl = QLabel("Server", self)
 		self.server_input = QLineEdit("", self)
+		self.server_input.setReadOnly(True)
 
 		#Port
 		self.port_lbl = QLabel("Port", self)
 		self.port_input = QLineEdit("", self)
+		self.port_input.setReadOnly(True)
 
 		#Username
 		self.username_lbl = QLabel("Username", self)
 		self.username_input = QLineEdit("", self)
+		self.username_input.setReadOnly(True)
 
 		#Password
 		self.password_lbl = QLabel("Password", self)
 		self.password_input = QLineEdit("", self)
+		self.password_input.setReadOnly(True)
 
 		self.controlsLayout = QGridLayout()
-		self.controlsLayout.addWidget(self.exit_btn, 3, 3)
+		self.controlsLayout.setSpacing(10)
+		self.controlsLayout.addWidget(self.delete_btn, 6, 3)
+		self.controlsLayout.addWidget(self.edit_btn, 4, 3)
+		self.controlsLayout.addWidget(self.set_btn, 2, 3)
+		self.controlsLayout.addWidget(self.new_btn, 3, 3)
+		self.controlsLayout.addWidget(self.save_btn, 5, 3)
 		self.setLayout(self.controlsLayout)
 		
 		#labels
-		self.controlsLayout.addWidget(self.section_lbl, 0, 0)
-		self.controlsLayout.addWidget(self.section_combo, 0, 1)
-		self.controlsLayout.addWidget(self.server_lbl, 1, 0)
-		self.controlsLayout.addWidget(self.server_input, 1, 1)
-		self.controlsLayout.addWidget(self.port_lbl, 2, 0)
-		self.controlsLayout.addWidget(self.port_input, 2, 1)
-		self.controlsLayout.addWidget(self.username_lbl, 3, 0)
-		self.controlsLayout.addWidget(self.username_input, 3, 1)
-		self.controlsLayout.addWidget(self.password_lbl, 4, 0)
-		self.controlsLayout.addWidget(self.password_input, 4, 1)
+		self.controlsLayout.addWidget(self.info_lbl, 0, 0, 1, 2)
+		self.controlsLayout.addWidget(self.info2_lbl, 1, 0, 1, 2)
+		self.controlsLayout.addWidget(self.section_lbl, 2, 0)
+		self.controlsLayout.addWidget(self.section_combo, 2, 1)
+		self.controlsLayout.addWidget(self.server_lbl, 3, 0)
+		self.controlsLayout.addWidget(self.server_input, 3, 1)
+		self.controlsLayout.addWidget(self.port_lbl, 4, 0)
+		self.controlsLayout.addWidget(self.port_input, 4, 1)
+		self.controlsLayout.addWidget(self.username_lbl, 5, 0)
+		self.controlsLayout.addWidget(self.username_input, 5, 1)
+		self.controlsLayout.addWidget(self.password_lbl, 6, 0)
+		self.controlsLayout.addWidget(self.password_input, 6, 1)
 		
-	def onActivated(self, text):
+		self.comboActivated()
+		
+	def comboActivated(self):
 		#triggered on combo selction
 		#get index of selected combo
 		savedproxies = proxies.getAllProxies()
-		for ProxySetting in savedproxies:
-			if ProxySetting.label == self.section_combo.itemText:
+		for ProxySetting in savedproxies:		
+			if ProxySetting.label == self.section_combo.itemText(self.section_combo.currentIndex()):
 				self.server_input.setText(ProxySetting.server)
 				self.port_input.setText(ProxySetting.port)
 				self.username_input.setText(ProxySetting.username)
 				self.password_input.setText(ProxySetting.password)
-			#self.section_combo.addItem(ProxySetting.label)
-#			proxyconfig.set(ProxySetting.label, "server", ProxySetting.server)
-#			proxyconfig.set(ProxySetting.label, "port", ProxySetting.port)
-#			proxyconfig.set(ProxySetting.label, "username", ProxySetting.username)
-#			proxyconfig.set(ProxySetting.label, "password", ProxySetting.password)		
+				
+	def edit_buttonClicked(self):
+		#allow fields to be edited
+		self.server_input.setReadOnly(False)
+		self.server_input.setFocus()
+		self.port_input.setReadOnly(False)
+		self.username_input.setReadOnly(False)
+		self.password_input.setReadOnly(False)
+		#disable edit and set button
+		self.edit_btn.setEnabled(False)
+		self.set_btn.setEnabled(False)
+		self.new_btn.setEnabled(False)
+		#enable save button
+		self.save_btn.setEnabled(True)
+		
+	def delete_buttonClicked(self):
+		#exit app
+		print("delete")
+		
+	def set_buttonClicked(self):
+		#set app
+		print("set")
+
+	def new_buttonClicked(self):
+		#new app
+		print("new")
+		#dialog to enter new label for proxy
+		text, ok = QInputDialog.getText(self, 'New Proxy Settings', 
+			'Enter label:')
+		
+		if ok:
+			#add to combo box
+			self.section_combo.addItem(str(text))
+			#set to new entry
+			self.section_combo.setCurrentIndex(self.section_combo.count()-1)
+			#then call edit function
+			self.edit_buttonClicked()
+
+	def save_buttonClicked(self):
+		#save app
+		print("save")
+		self.edit_btn.setEnabled(True)
+		self.set_btn.setEnabled(True)
+		self.new_btn.setEnabled(True)
+		self.save_btn.setEnabled(False)
+
 
 
 class ProxySwitcherWindow(QMainWindow):
@@ -108,30 +183,30 @@ class ProxySwitcherWindow(QMainWindow):
 		self.setCentralWidget(self.widget)
 
 		#Create Menu Item
-		self.createAction = QAction(QIcon('create.png'), '&Create', self)
-		self.createAction.setShortcut('Ctrl+C')
-		self.createAction.setStatusTip('Create Proxy Settings')
+#		self.createAction = QAction(QIcon('create.png'), '&Create', self)
+#		self.createAction.setShortcut('Ctrl+C')
+#		self.createAction.setStatusTip('Create Proxy Settings')
 		#self.createAction.triggered.connect(self.create)
 
 		#Edit Menu Item
-		self.editAction = QAction(QIcon('edit.png'), '&Edit', self)
-		self.editAction.setShortcut('Ctrl+E')
-		self.editAction.setStatusTip('Edit Proxy Settings')
-		self.editAction.triggered.connect(self.openFile)
+#		self.editAction = QAction(QIcon('edit.png'), '&Edit', self)
+#		self.editAction.setShortcut('Ctrl+E')
+#		self.editAction.setStatusTip('Edit Proxy Settings')
+#		self.editAction.triggered.connect(self.openFile)
 
 		#Delete Menu Item
-		self.deleteAction = QAction(QIcon('delete.png'), '&Delete', self)
-		self.deleteAction.setShortcut('Ctrl+D')
-		self.deleteAction.setStatusTip('Delete Proxy Settings')
+#		self.deleteAction = QAction(QIcon('delete.png'), '&Delete', self)
+#		self.deleteAction.setShortcut('Ctrl+D')
+#		self.deleteAction.setStatusTip('Delete Proxy Settings')
 		#self.deleteAction.triggered.connect(self.delete)
 
-		self.menu = self.menuBar()
-		self.proxyMenu = self.menu.addMenu('&Proxy')
-		self.proxyMenu.addAction(self.createAction)
-		self.proxyMenu.addAction(self.editAction)
-		self.proxyMenu.addAction(self.deleteAction)
+#		self.menu = self.menuBar()#
+		#self.proxyMenu = self.menu.addMenu('&Proxy')
+		#self.proxyMenu.addAction(self.createAction)
+		#self.proxyMenu.addAction(self.editAction)
+		#self.proxyMenu.addAction(self.deleteAction)
 		
-		self.setGeometry(300, 300, 250, 250)
+#		self.setGeometry(300, 300, 250, 250)
 		self.setWindowTitle('Proxy Switcher')
 		self.setWindowIcon(QIcon('switch.png'))
 
@@ -234,7 +309,6 @@ def main():
 		proxyconfig = configparser.ConfigParser()
 		proxyconfig.read(settingfilename)
 		for section_name in proxyconfig.sections():
-#			print('Section:', section_name)
 			sectionname = section_name
 			servername = proxyconfig.get(section_name,'server')
 			portid = proxyconfig.get(section_name,'port')
@@ -246,8 +320,6 @@ def main():
 		#will be first time run - so create blank entry for no proxy
 		proxies.add_settings("No Proxy", "","","","")
 #		proxies.add_settings("work", "webshield.embc.uk.com","80","test","pass")
-
-#	proxies.printAllProxies()
 	
 	# create a Qt application for gui
 	app = QApplication(sys.argv)
