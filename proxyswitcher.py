@@ -146,10 +146,34 @@ class ProxySwitcher(QWidget):
 	def delete_buttonClicked(self):
 		#exit app
 		print("delete")
+		#dialog to check delete label for proxy
+		msgBox = QMessageBox()
+		proxyText = "Delete Proxy Settings for: " + self.section_combo.itemText(self.section_combo.currentIndex())
+		msgBox.setWindowTitle("Delete?")
+		msgBox.setText(proxyText)
+		msgBox.setInformativeText("Do you want to delete these settings?")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		msgBox.setDefaultButton(QMessageBox.No)
+		ret = msgBox.exec_()
+		
+		if ret == QMessageBox.Yes:
+			print("DEl")
+
 		
 	def set_buttonClicked(self):
 		#set app
 		print("set")
+		# get proxy settings from GUI
+		self.validateProxy()
+		
+		#if "No Proxy" then call unsetProxy
+		#else call setProxy
+		
+	def unsetProxy():
+		print*("unsetting")
+		
+	def setProxy():
+		print("setting")
 
 	def new_buttonClicked(self):
 		#new app
@@ -163,16 +187,39 @@ class ProxySwitcher(QWidget):
 			self.section_combo.addItem(str(text))
 			#set to new entry
 			self.section_combo.setCurrentIndex(self.section_combo.count()-1)
+			#delete values in edit fields
+			self.server_input.clear()
+			self.port_input.clear()
+			self.username_input.clear()
+			self.password_input.clear()
 			#then call edit function
 			self.edit_buttonClicked()
 
 	def save_buttonClicked(self):
 		#save app
 		print("save")
+		#validate - call validateProxy
+		self.validateProxy()
+		#save details into proxy class
+		
+		
+		#switch button states back
 		self.edit_btn.setEnabled(True)
 		self.set_btn.setEnabled(True)
 		self.new_btn.setEnabled(True)
 		self.save_btn.setEnabled(False)
+		#swicth back input states
+		self.server_input.setReadOnly(True)
+		self.port_input.setReadOnly(True)
+		self.username_input.setReadOnly(True)
+		self.password_input.setReadOnly(True)
+
+	def validateProxy():
+		print("validating")
+		#server must exit and be text
+		#port must exist and be numeric
+		#username does not have to exist
+		#password does not have to exist
 
 
 
@@ -182,42 +229,9 @@ class ProxySwitcherWindow(QMainWindow):
 		self.widget = ProxySwitcher()
 		self.setCentralWidget(self.widget)
 
-		#Create Menu Item
-#		self.createAction = QAction(QIcon('create.png'), '&Create', self)
-#		self.createAction.setShortcut('Ctrl+C')
-#		self.createAction.setStatusTip('Create Proxy Settings')
-		#self.createAction.triggered.connect(self.create)
-
-		#Edit Menu Item
-#		self.editAction = QAction(QIcon('edit.png'), '&Edit', self)
-#		self.editAction.setShortcut('Ctrl+E')
-#		self.editAction.setStatusTip('Edit Proxy Settings')
-#		self.editAction.triggered.connect(self.openFile)
-
-		#Delete Menu Item
-#		self.deleteAction = QAction(QIcon('delete.png'), '&Delete', self)
-#		self.deleteAction.setShortcut('Ctrl+D')
-#		self.deleteAction.setStatusTip('Delete Proxy Settings')
-		#self.deleteAction.triggered.connect(self.delete)
-
-#		self.menu = self.menuBar()#
-		#self.proxyMenu = self.menu.addMenu('&Proxy')
-		#self.proxyMenu.addAction(self.createAction)
-		#self.proxyMenu.addAction(self.editAction)
-		#self.proxyMenu.addAction(self.deleteAction)
-		
-#		self.setGeometry(300, 300, 250, 250)
 		self.setWindowTitle('Proxy Switcher')
 		self.setWindowIcon(QIcon('switch.png'))
 
-	# open file
-	def openFile(self):
-		dialog = QFileDialog(self)
-		dialog.setDirectory(settingdirectory)
-		dialog.setNameFilter('*.pxs')
-		dialog.setViewMode(QFileDialog.List)
-		if dialog.exec_():
-			filename = dialog.selectedFiles()
 			
 class ProxySetting():
 	def __init__(self, label, server, port, username, password):
@@ -301,8 +315,9 @@ def main():
 	# now see if we have a settings.pxs file - if not auto create it
 	settingsfile = open(settingfilename, 'a')
 
-	#create empty array to hold settings
-	global proxies# = ProxySettingsArray("")
+	#point to global empty array to hold settings
+	global proxies
+	
 	# read file and store sections in array
 	if os.path.getsize(settingfilename) > 0:
 		#file has data in it
@@ -314,6 +329,7 @@ def main():
 			portid = proxyconfig.get(section_name,'port')
 			username = proxyconfig.get(section_name,'username')
 			passwd = proxyconfig.get(section_name,'password')
+			#add to array
 			proxies.add_settings(sectionname, servername, portid, username, passwd)
 	else:
 		#else file is zero bytes - hence empty
@@ -366,7 +382,7 @@ if __name__ == '__main__':
 
 
 
-# get proxy settings from GUI
+
 
 # save proxy settings in file
 # parse string
