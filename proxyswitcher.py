@@ -75,7 +75,7 @@ class ProxySwitcher(QWidget):
 
 		#Server
 		self.server_lbl = QLabel("Server", self)
-		self.server_input = QLineEdit("", self)
+		self.server_input = QLineEdit("http://", self)
 		self.server_input.setReadOnly(True)
 
 		#Port
@@ -128,6 +128,16 @@ class ProxySwitcher(QWidget):
 				self.port_input.setText(ProxySetting.port)
 				self.username_input.setText(ProxySetting.username)
 				self.password_input.setText(ProxySetting.password)
+				if ProxySetting.label == "No Proxy":
+					#disable delete and edit buttons
+					self.edit_btn.setEnabled(False)
+					self.delete_btn.setEnabled(False)
+				else:
+					#enable delete and edit buttons
+					self.edit_btn.setEnabled(True)
+					self.delete_btn.setEnabled(True)
+
+	
 				
 	def edit_buttonClicked(self):
 		#allow fields to be edited
@@ -164,32 +174,103 @@ class ProxySwitcher(QWidget):
 		#set app
 		print("set")
 		# get proxy settings from GUI
-		self.validateProxy()
-		
+		#validate - call validateProxy only if not "No Proxy"
+		if self.section_combo.itemText(self.section_combo.currentIndex()) != "No Proxy":
+			self.validateProxy()
 		#if "No Proxy" then call unsetProxy
-		#else call setProxy
+		if self.section_combo.itemText(self.section_combo.currentIndex()) == "No Proxy":
+			self.unsetProxy()
+		else:
+			#else call setProxy
+			self.setProxy()
 		
-	def unsetProxy():
-		print*("unsetting")
 		
-	def setProxy():
-		print("setting")
+	def unsetProxy(self):
+		print("unsetting")
+		msgBox = QMessageBox()
+		msgBox.setWindowTitle("No Proxy")
+		msgBox.setText("Setting to 'No Proxy' will remove ALL proxy settings")
+		msgBox.setInformativeText("Do you wish to remove ALL proxy settings?")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		msgBox.setDefaultButton(QMessageBox.No)
+		ret = msgBox.exec_()
+		if ret == QMessageBox.Yes:
+			print("unsetting")
+			# unset environment variables
+			#to get around child process (us) not being able to amend parent 
+			#we need to create a shell file with export commands
+			#and then chmod it and run it from here
+			envText = "sudo unset http_proxy https_proxy ftp_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY"
+			self.exportEnvVarianbles(envText)
+			# create blank aptconf file
+			aptconfFile = open(aptconfFilename, 'w')	#overwrites if exists
+			# save/overwrite aptconf file
+			aptconfFile.close()	#just close it
+			#That's it - so let user know ...
+			msgBox.setText("Setting to 'No Proxy' processed")
+			msgBox.setInformativeText("ALL proxy settings have been removed")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			ret = msgBox.exec_()
+		else:
+			#just return
+			msgBox.setText("Setting to 'No Proxy' cancelled")
+			msgBox.setInformativeText("")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			ret = msgBox.exec_()
 
+
+		
+	def setProxy(self):
+		print("setting")
+		# set proxy settings
+		# parse variables
+		aptText = "http://"
+		if self.username_input.text():
+			#there is a username (and assume password too)
+			aptText = aptText + self.username_input.text() + ":" + self.password_input.text() + "@"
+		aptText = aptText + self.server_input.text() + ":" + self.port_input.text() + "/"
+		print(aptText)
+		# export environment variables
+		#to get around child process (us) not being able to amend parent 
+		#we need to create a shell file with export commands
+		#and then chmod it and run it from here
+		
+		envText = "set http_proxy=" + aptText
+		self.exportEnvVarianbles(envText)
+		# create aptconf file using parsed variables
+		# save/overwrite aptconf file
+
+	def exportEnvVarianbles(self, envText):
+		#to get around child process (us) not being able to amend parent 
+		#we need to create a shell file with export commands
+		#and then chmod it and run it from here
+		#open file
+		print("exporting")
+		envShellFile = open(envShellFilename, 'w')
+		envShellFile.write(envText)
+		st = os.stat(envShellFilename)
+		os.chmod(envShellFilename,0o777)
+		envShellFile.close()
+		#now run it
+#		os.system("sudo ./" + envShellFilename)
+		os.system(envShellFilename)
+		
+	
 	def new_buttonClicked(self):
 		#new app
 		print("new")
 		#dialog to enter new label for proxy
 		text, ok = QInputDialog.getText(self, 'New Proxy Settings', 
 			'Enter label:')
-		
+	
 		if ok:
 			#add to combo box
 			self.section_combo.addItem(str(text))
 			#set to new entry
 			self.section_combo.setCurrentIndex(self.section_combo.count()-1)
 			#delete values in edit fields
-			self.server_input.clear()
-			self.port_input.clear()
+			self.server_input.setText("")
+			self.port_input.setText("80")
 			self.username_input.clear()
 			self.password_input.clear()
 			#then call edit function
@@ -198,8 +279,9 @@ class ProxySwitcher(QWidget):
 	def save_buttonClicked(self):
 		#save app
 		print("save")
-		#validate - call validateProxy
-		self.validateProxy()
+		#validate - call validateProxy only if not "No Proxy"
+		if self.section_combo.itemText(self.section_combo.currentIndex()) != "No Proxy":
+			self.validateProxy()
 		#save details into proxy class
 		
 		
@@ -214,10 +296,35 @@ class ProxySwitcher(QWidget):
 		self.username_input.setReadOnly(True)
 		self.password_input.setReadOnly(True)
 
-	def validateProxy():
+	def validateProxy(self):
 		print("validating")
-		#server must exit and be text
+		
+		#server must exist and be text
+		serverText = self.server_input.text()
+		while not serverText:	#that is while not empty
+			msgText = "Server must not be empty - please enter details:"
+			serverText, ok = QInputDialog.getText(self, 'Error', msgText)
+		#save portTest back to lineedit
+		self.server_input.setText(serverText)
+		#server must NOT begin with http://or https://
+		while serverText.startswith("http://") or serverText.startswith("https://"):
+			msgText = "Server must NOT begin with 'http://' or 'https://':"
+			serverText, ok = QInputDialog.getText(self, 'Error', msgText ,text=serverText)
+		#save portTest back to lineedit
+		self.server_input.setText(serverText)
+			
+
 		#port must exist and be numeric
+		portText = self.port_input.text()
+		while not portText.isdigit(): # this is a builtin method of all str objects			print("Error")
+			#dialog to edit port
+			if not portText:
+				portText = "  "
+			msgText = "Port (" + portText + ") is not numeric - please enter a number:"
+			portText, ok = QInputDialog.getText(self, 'Error', msgText)
+		#save portTest back to lineedit
+		self.port_input.setText(portText)
+
 		#username does not have to exist
 		#password does not have to exist
 
@@ -295,7 +402,7 @@ class ProxySettingsArray():
 		return self.settings
 
 
-
+#declaration of variables
 
 settingdirectory =  'c://home/ProxySwitcher/'
 settingfilename = settingdirectory + 'settings.pxs'
@@ -303,7 +410,10 @@ proxyservername = ""
 proxyserverport = ""
 proxyuser = ""
 proxypassword = ""
-proxies = ProxySettingsArray("")	
+proxies = ProxySettingsArray("")	#global
+aptconfDirectory = "c://home/ProxySwitcher/"
+aptconfFilename = aptconfDirectory + "apt.conf"
+envShellFilename = settingdirectory + "setEnv.bat"
 
 def main():
 
@@ -335,7 +445,7 @@ def main():
 		#else file is zero bytes - hence empty
 		#will be first time run - so create blank entry for no proxy
 		proxies.add_settings("No Proxy", "","","","")
-#		proxies.add_settings("work", "webshield.embc.uk.com","80","test","pass")
+#		proxies.add_settings("work", "webshield.embc.uk.com","80","","")
 	
 	# create a Qt application for gui
 	app = QApplication(sys.argv)
@@ -347,8 +457,7 @@ def main():
 	app.exec_()
 	
 	#window has closed
-	#save config file
-	#open file for writing
+	#save config file - open file for writing
 	settingsfile = open(settingfilename, 'w')
 	
 	#remove all sections
@@ -400,14 +509,6 @@ if __name__ == '__main__':
 # call get
 # delete it if sure
 
-# set proxy settings
-# call get
-# parse variables
-# export environment variables
-# create aptconf file using parsed variables
-# save/overwrite aptconf file
 
-# unset proxy settings
-# unset environment variables
-# create blank aptconf file
-# save/overwrite aptconf file
+
+
