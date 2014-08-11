@@ -1,0 +1,1 @@
+python setvar.py http_proxy http://w:80/

@@ -1,0 +1,1 @@
+set http_proxy=http://w:80/

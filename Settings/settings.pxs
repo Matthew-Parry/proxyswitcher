@@ -1,0 +1,12 @@
+[No Proxy]
+server = 
+port = 
+username = 
+password = 
+
+[w]
+server = w
+port = 80
+username = 
+password = 
+
