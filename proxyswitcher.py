@@ -8,19 +8,23 @@
 # ProxySwitcher creates a directory home/ProxySwitcher/
 # ProxySwitcher creates a settings file home/ProxySwitcher/settings.pxs
 # This file contains:
-#        - current proxy settings
+# - current proxy settings
 #        - saved proxy settings
 #
-# Matthew Parry 2014
+# If SET button pressed then the selected proxy settings are set
+#   via     - creating a batch file in /etc/rc.local
+#           - rebooting the pi so that the batch file runs
+#
+# Matthew Parry 2015
 #
 # -----------------------
 # Import required Python libraries
 # -----------------------
 import time
-import os,subprocess
+import os, subprocess
 import sys
 from PySide.QtCore import *
-from PySide.QtGui import*
+from PySide.QtGui import *
 import configparser
 
 
@@ -35,27 +39,27 @@ class ProxySwitcher(QWidget):
 
         # Exit Button
         self.delete_btn = QPushButton('Delete', self)
-        self.delete_btn.setMaximumSize(50,30)
+        self.delete_btn.setMaximumSize(50, 30)
         self.delete_btn.setEnabled(True)
         self.delete_btn.clicked.connect(self.delete_buttonClicked)
         # Save Button
         self.save_btn = QPushButton('Save', self)
-        self.save_btn.setMaximumSize(50,30)
+        self.save_btn.setMaximumSize(50, 30)
         self.save_btn.setEnabled(False)
         self.save_btn.clicked.connect(self.save_buttonClicked)
         # Set Button
         self.set_btn = QPushButton('Set', self)
-        self.set_btn.setMaximumSize(50,30)
+        self.set_btn.setMaximumSize(50, 30)
         self.set_btn.setEnabled(True)
         self.set_btn.clicked.connect(self.set_buttonClicked)
         # New Button
         self.new_btn = QPushButton('New', self)
-        self.new_btn.setMaximumSize(50,30)
+        self.new_btn.setMaximumSize(50, 30)
         self.new_btn.setEnabled(True)
         self.new_btn.clicked.connect(self.new_buttonClicked)
         # Edit Button
         self.edit_btn = QPushButton('Edit', self)
-        self.edit_btn.setMaximumSize(50,30)
+        self.edit_btn.setMaximumSize(50, 30)
         self.edit_btn.setEnabled(True)
         self.edit_btn.clicked.connect(self.edit_buttonClicked)
 
@@ -71,10 +75,11 @@ class ProxySwitcher(QWidget):
         #call function on selection in combo
         self.section_combo.activated[str].connect(self.comboActivated)
 
-        self.info_lbl = QLabel("Select Proxy Setting and click Set to use those settings", self)
+        self.info_lbl = QLabel("NO PROXY is Set", self)
+        self.info1_lbl = QLabel("Select Proxy Setting and click Set to use those settings", self)
         self.info2_lbl = QLabel("or Edit to change or Delete to remove or New to create new settings", self)
 
-        #Server
+        #Server - preload "http://"
         self.server_lbl = QLabel("Server", self)
         self.server_input = QLineEdit("http://", self)
         self.server_input.setReadOnly(True)
@@ -94,6 +99,7 @@ class ProxySwitcher(QWidget):
         self.password_input = QLineEdit("", self)
         self.password_input.setReadOnly(True)
 
+        #Layout
         self.controlsLayout = QGridLayout()
         self.controlsLayout.setSpacing(10)
         self.controlsLayout.addWidget(self.delete_btn, 6, 3)
@@ -139,7 +145,6 @@ class ProxySwitcher(QWidget):
                     self.delete_btn.setEnabled(True)
 
 
-
     def edit_buttonClicked(self):
         #allow fields to be edited
         self.server_input.setReadOnly(False)
@@ -168,7 +173,19 @@ class ProxySwitcher(QWidget):
         ret = msgBox.exec_()
 
         if ret == QMessageBox.Yes:
+            #remove the settings from the array
+            proxies.delete_settings(self.section_combo.itemText(self.section_combo.currentIndex()))
             print("DEl")
+            #remove proxy from combo
+            self.section_combo.removeItem(self.section_combo.currentIndex())
+            self.section_combo.setCurrentIndex(0)
+            #clear other settings too
+            self.username_input.clear()
+            self.password_input.clear()
+            self.server_input.clear()
+            self.port_input.clear()
+            #set to first item in combo
+            #self.section_combo.set
 
         #switch button states back
         self.edit_btn.setEnabled(True)
@@ -182,9 +199,8 @@ class ProxySwitcher(QWidget):
         self.password_input.setReadOnly(True)
 
 
-
     def set_buttonClicked(self):
-        #set app
+        #set button pressed
         print("set")
         # get proxy settings from GUI
         #validate - call validateProxy only if not "No Proxy"
@@ -199,6 +215,7 @@ class ProxySwitcher(QWidget):
 
 
     def unsetProxy(self):
+        #called when removing any proxy setting
         print("unsetting")
         msgBox = QMessageBox()
         msgBox.setWindowTitle("No Proxy")
@@ -216,9 +233,9 @@ class ProxySwitcher(QWidget):
             envText = "sudo unset http_proxy https_proxy ftp_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY"
             self.exportEnvVarianbles(envText)
             # create blank aptconf file
-            aptconfFile = open(aptconfFilename, 'w')    #overwrites if exists
+            aptconfFile = open(aptconfFilename, 'w')  #overwrites if exists
             # save/overwrite aptconf file
-            aptconfFile.close() #just close it
+            aptconfFile.close()  #just close it
             #That's it - so let user know ...
             msgBox.setText("Setting to 'No Proxy' processed")
             msgBox.setInformativeText("ALL proxy settings have been removed")
@@ -231,6 +248,13 @@ class ProxySwitcher(QWidget):
             msgBox.setStandardButtons(QMessageBox.Ok)
             ret = msgBox.exec_()
 
+    def restart():
+        command = "/usr/bin/sudo /sbin/shutdown -r now"
+        import subprocess
+
+        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+        output = process.communicate()[0]
+        print(output)
 
 
     def setProxy(self):
@@ -248,10 +272,15 @@ class ProxySwitcher(QWidget):
         #we need to create a shell file with export commands
         #and then chmod it and run it from here
 
-#        envText = "#!/bin/bash\nhttp_proxy=\"" + aptText + "\"\nexport http_proxy"
-        envText = "\"http_proxy\" \"" + aptText + "\""
+        envText = "#!/bin/bash\n"
+        envText = envText = "export http_proxy=\"" + aptText + "\"\n"
+        envText = envText + "export https_proxy=\"" + aptText + "\"\n"
+        envText = envText + "export ftp_proxy=\"" + aptText + "\"\n"
+        envText = envText + "export HTTP_PROXY=\"" + aptText + "\"\n"
+        envText = envText + "export HTTPS_PROXY=\"" + aptText + "\"\n"
+        envText = envText + "export FTP_PROXY=\"" + aptText + "\"\n"
         self.exportEnvVarianbles(envText)
-        
+
         # create aptconf file using parsed variables
         # save/overwrite aptconf file
 
@@ -265,17 +294,18 @@ class ProxySwitcher(QWidget):
         #os.system("eval $(python setvar.py " + envText)
         envShellFile = open(envShellFilename, 'w')
         envShellFile.write(envText)
-#        st = os.stat(envShellFilename)
-        os.chmod(envShellFilename,0o777)
+        #        st = os.stat(envShellFilename)
+        os.chmod(envShellFilename, 0o777)
         envShellFile.close()
         #now run it
-        txt = (". ./setvar.bat http_proxy fred")# + envText)
+        txt = (". ./setvar.bat http_proxy fred")  # + envText)
         arg = ("  ./setvar.bat " + envText)
         print(txt)
         os.system(txt)
-#        subprocess.call(". ./setvar.bat " + envText,shell=True)
-#o        os.system(".  ./settmp.bat")
-        #os.system(envShellFilename)
+
+    #        subprocess.call(". ./setvar.bat " + envText,shell=True)
+    #o        os.system(".  ./settmp.bat")
+    #os.system(envShellFilename)
 
 
     def new_buttonClicked(self):
@@ -283,18 +313,20 @@ class ProxySwitcher(QWidget):
         print("new")
         #dialog to enter new label for proxy
         text, ok = QInputDialog.getText(self, 'New Proxy Settings',
-            'Enter label:')
+                                        'Enter label:')
 
         if ok:
             #add to combo box
             self.section_combo.addItem(str(text))
             #set to new entry
-            self.section_combo.setCurrentIndex(self.section_combo.count()-1)
+            self.section_combo.setCurrentIndex(self.section_combo.count() - 1)
             #delete values in edit fields
             self.server_input.setText("")
             self.port_input.setText("80")
             self.username_input.clear()
             self.password_input.clear()
+            #then call save function to store in array
+            #self.save_buttonClicked()
             #then call edit function
             self.edit_buttonClicked()
 
@@ -312,7 +344,7 @@ class ProxySwitcher(QWidget):
             self.port_input.text(),
             self.username_input.text(),
             self.password_input.text()
-            )                      
+        )
 
         #switch button states back
         self.edit_btn.setEnabled(True)
@@ -330,7 +362,7 @@ class ProxySwitcher(QWidget):
 
         #server must exist and be text
         serverText = self.server_input.text()
-        while not serverText:   #that is while not empty
+        while not serverText:  #that is while not empty
             msgText = "Server must not be empty - please enter details:"
             serverText, ok = QInputDialog.getText(self, 'Error', msgText)
         #save portTest back to lineedit
@@ -338,14 +370,13 @@ class ProxySwitcher(QWidget):
         #server must NOT begin with http://or https://
         while serverText.startswith("http://") or serverText.startswith("https://"):
             msgText = "Server must NOT begin with 'http://' or 'https://':"
-            serverText, ok = QInputDialog.getText(self, 'Error', msgText ,text=serverText)
+            serverText, ok = QInputDialog.getText(self, 'Error', msgText, text=serverText)
         #save portTest back to lineedit
         self.server_input.setText(serverText)
 
-
         #port must exist and be numeric
         portText = self.port_input.text()
-        while not portText.isdigit(): # this is a builtin method of all str objects         print("Error")
+        while not portText.isdigit():  # this is a builtin method of all str objects         print("Error")
             #dialog to edit port
             if not portText:
                 portText = "  "
@@ -354,9 +385,8 @@ class ProxySwitcher(QWidget):
         #save portTest back to lineedit
         self.port_input.setText(portText)
 
-        #username does not have to exist
-        #password does not have to exist
-
+        #username does not have to exist - so no validation
+        #password does not have to exist - so no validation
 
 
 class ProxySwitcherWindow(QMainWindow):
@@ -369,6 +399,7 @@ class ProxySwitcherWindow(QMainWindow):
         self.setWindowIcon(QIcon('switch.png'))
 
         #self.actionExit.triggered.connect(self.close)
+
 
 #    def closeEvent(self,event):
 #                #claa saveevent
@@ -398,36 +429,46 @@ class ProxySetting():
         print("username = ", self.username)
         print("password = ", self.password)
 
+
 class ProxySettingsArray():
     def __init__(self, settings):
         self.settings = []
         for label, server, port, username, password in settings:
             self.add_settings(label, server, port, username, password)
 
-    def add_settings(self,label, server, port, username, password):
-        index = self.exists(label)  #returns index of existing entry
-        if index > -1:
+    def add_settings(self, label, server, port, username, password):
+        indx = self.exists(label)  #returns index of existing entry
+        if indx != None:
             #already exists so amend existing values
-            self.settings[index].amend_settings(label, server, port, username, password)
+            self.settings[int(indx)].amend_settings(label, server, port, username, password)
             return "label exists"
         else:
             self.settings.append(ProxySetting(label, server, port, username, password))
             return "label appended"
 
-    def delete_settings(self,label):
-        index = self.exists(label)
-        if index > -1:
+    def delete_settings(self, label):
+        indx = self.exists(label)
+        if indx != None:
             #exists so delete
             print("Are you sure?")
-            del self.settings[index]
+            item = self.settings.pop(indx)
+            #self.settings.remove(item)
+            #del self.settings[indx]
         else:
             return "It don't exist"
 
-    def exists(self, label):
-        for setting in self.settings:
-            if label == setting.label:
-                return self.settings.index
-        return -1
+    def exists(self, labl):
+        for idx, setting in enumerate(self.settings):
+            if labl == setting.label:
+                return idx
+
+        return None
+
+     #   if self.settings.index(label) > 0:
+     #       return self.settings.index(label)
+     #   else:
+     #       return -1
+    #    return -1
 
     def printAllProxies(self):
         for setting in self.settings:
@@ -438,24 +479,23 @@ class ProxySettingsArray():
 
 
 #declaration of variables
-
-settingdirectory =  'Settings/'
+settingdirectory = 'Settings/'
 settingfilename = settingdirectory + 'settings.pxs'
 proxyservername = ""
 proxyserverport = ""
 proxyuser = ""
 proxypassword = ""
-proxies = ProxySettingsArray("")    #global
+proxies = ProxySettingsArray("")  #global
 aptconfDirectory = "c://home/ProxySwitcher/"
 aptconfFilename = aptconfDirectory + "apt.conf"
 envShellFilename = "setEnv.sh"
 
-def main():
 
-    # check see if any proxy settings stored
+def main():
+    # check to see if any proxy settings stored
     # first check path exists ...
-    if not os.path.exists(settingdirectory): #checks for whether this path (pointed by dir), exists or not
-        os.makedirs(settingdirectory)           #make it
+    if not os.path.exists(settingdirectory):  #checks for whether this path (pointed by dir), exists or not
+        os.makedirs(settingdirectory)  #make it
 
     # now see if we have a settings.pxs file - if not auto create it
     settingsfile = open(settingfilename, 'a')
@@ -466,22 +506,21 @@ def main():
 
     # read file and store sections in array
     if os.path.getsize(settingfilename) > 0:
-        #file has data in it
+        #file has data in it so load it in
         proxyconfig = configparser.ConfigParser()
         proxyconfig.read(settingfilename)
         for section_name in proxyconfig.sections():
             sectionname = section_name
-            servername = proxyconfig.get(section_name,'server')
-            portid = proxyconfig.get(section_name,'port')
-            username = proxyconfig.get(section_name,'username')
-            passwd = proxyconfig.get(section_name,'password')
+            servername = proxyconfig.get(section_name, 'server')
+            portid = proxyconfig.get(section_name, 'port')
+            username = proxyconfig.get(section_name, 'username')
+            passwd = proxyconfig.get(section_name, 'password')
             #add to array
             proxies.add_settings(sectionname, servername, portid, username, passwd)
     else:
         #else file is zero bytes - hence empty
-        #will be first time run - so create blank entry for no proxy
-        proxies.add_settings("No Proxy", "","","","")
-#       proxies.add_settings("work", "webshield.embc.uk.com","80","","")
+        #this should only happen first time program is run - so create blank entry for no proxy
+        proxies.add_settings("No Proxy", "", "", "", "")
 
     settingsfile.close()
 
@@ -491,7 +530,7 @@ def main():
 
     window.show()
 
-    # Enter Qt application loop - process the gui
+    # Enter Qt application loop - processes all GUI interactions
     app.exec_()
 
     #window has closed
@@ -507,7 +546,7 @@ def main():
     #now add class info
     savedproxies = proxies.getAllProxies()  #get list of all proxies
 
-    #now save to config file
+    #now save back to config file
     for ProxySetting in savedproxies:
         print(ProxySetting.label)
         proxyconfig.add_section(ProxySetting.label)
@@ -523,33 +562,5 @@ def main():
     sys.exit()
 
 
-
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-# save proxy settings in file
-# parse string
-# save as file
-
-# edit proxy settings
-# call get
-# call save
-
-# get proxy settings from file
-# find file
-# read file into variables
-
-# delete proxy settings
-# call get
-# delete it if sure
-
-
-
-

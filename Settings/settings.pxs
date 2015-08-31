@@ -4,8 +4,8 @@ port =
 username = 
 password = 
 
-[w]
-server = w
+[dd]
+server = webshield.embc.uk.com
 port = 80
 username = 
 password = 

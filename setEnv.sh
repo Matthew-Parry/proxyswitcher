@@ -1,1 +1,6 @@
-"http_proxy" "http://w:80/"
+export http_proxy="http://webshield.embc.uk.com:80/"
+export https_proxy="http://webshield.embc.uk.com:80/"
+export ftp_proxy="http://webshield.embc.uk.com:80/"
+export HTTP_PROXY="http://webshield.embc.uk.com:80/"
+export HTTPS_PROXY="http://webshield.embc.uk.com:80/"
+export FTP_PROXY="http://webshield.embc.uk.com:80/"
